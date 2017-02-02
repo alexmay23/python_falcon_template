@@ -3,7 +3,7 @@
 import collections
 import functools
 from collections import defaultdict
-
+import phonenumbers
 from bson import ObjectId
 from bson.errors import InvalidId
 from marshmallow import fields, validate, Schema
@@ -92,6 +92,37 @@ class MongoId(fields.String):
             self.fail('invalid')
 
 
+class Identity(fields.String):
+
+    def _serialize(self, value, attr, obj):
+        return super(Identity, self)._serialize(value, attr, obj)
+
+    def _deserialize(self, value, attr, data):
+        value = super(Identity, self)._deserialize(value, attr, data)
+        if '@' in value:
+            return value
+        else:
+            try:
+                if value and value[0] != '+':
+                    value = '+' + value
+                number = phonenumbers.parse(value)
+                if phonenumbers.is_valid_number(number):
+                    return value
+            except phonenumbers.NumberParseException:
+                pass
+        self.fail('invalid')
+
+
+class Password(fields.String):
+    def _serialize(self, value, attr, obj):
+        return super(Password, self)._serialize(value, attr, obj)
+
+    def _deserialize(self, value, attr, data):
+        value = super(Password, self)._deserialize(value, attr, data)
+        if len(value) < 5:
+            self.fail('Password too short')
+
+
 class DateTimeReplaced(fields.DateTime):
     def _serialize(self, value, attr, obj):
         value = value.replace(microsecond=0) if value is not None else None
@@ -100,5 +131,19 @@ class DateTimeReplaced(fields.DateTime):
     def _deserialize(self, value, attr, obj):
         return super(DateTimeReplaced, self)._serialize(value, attr, obj)
 
+
+class OKSchema(Schema):
+    ok = fields.Boolean()
+
+
+def make_list_schema(schema, *args, **kwargs):
+    class _Shema(Schema):
+        total = fields.Integer()
+        objects = fields.List(Nested(schema, *args, **kwargs))
+
+    return _Shema
+
+
+skip_limit_args = {'skip': fields.Integer(), 'limit': fields.Integer()}
 
 fields.MongoId = MongoId

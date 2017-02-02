@@ -6,4 +6,11 @@ marshmallow
 webargs
 hyper
 six
+PyJWT
+pymemcache
+twilio
+sparkpost
+amqp==1.4.9
+phonenumbers
+flatdict
 falcon-cors
